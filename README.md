@@ -6,7 +6,7 @@
 
 <img width="698" alt="屏幕截图 2025-02-09 194843" src="https://github.com/user-attachments/assets/bf91a180-d9c5-4814-bbfb-05b9bf6b1395" />
 
-参考音频文件：无其他杂音的纯人声音频文件
+参考音频文件：无其他杂音的纯人声音频存放路径文件，例如：data/plugins/astrbot_plugin_moreVITS/三月七.mp3
 
 参考音频文本：上面音频文件的文字内容
 
