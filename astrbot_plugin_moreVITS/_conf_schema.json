@@ -1,0 +1,37 @@
+{
+    "url": {
+        "description": "API URL",
+        "type": "string",
+        "hint": "请输入API的URL地址"
+    },
+    "apikey": {
+        "description": "API Key",
+        "type": "string",
+        "hint": "请输入API的密钥"
+    },
+    "name": {
+        "description": "模型名称",
+        "type": "string",
+        "hint": "请输入模型的名称"
+    },
+    "voice": {
+        "description": "音色名称",
+        "type": "string",
+        "hint": "请输入音色的名称"
+    },
+    "参考音频文件": {
+        "description": "参考音频文件",
+        "type": "string",
+        "hint": "请输入参考音频文件的地址"
+    },
+    "参考音频文本": {
+        "description": "参考音频文本",
+        "type": "string",
+        "hint": "请输入参考音频文件文本"
+    },
+    "参考音频url": {
+        "description": "参考音频url",
+        "type": "string",
+        "hint": "请输入参考音频url"
+    }
+}
