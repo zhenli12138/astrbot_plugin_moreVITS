@@ -16,7 +16,7 @@
 
 <img width="878" alt="屏幕截图 2025-02-09 231426" src="https://github.com/user-attachments/assets/5d8dccce-9626-4179-bde5-8168d9b837fb" />
 
-音频文件只能手动添加，qq无法读取，图片内为错别字。
+音频文件只能手动添加，qq无法读取！！！！！
 
 有问题可以@我，我就在大群里哦
 # 支持
