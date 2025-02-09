@@ -1,4 +1,5 @@
 插件根据硅基流动的文字转语音用法，用户可以上传自己的音频素材作为参考生产音频的功能，音色可以多样性而不是仅仅的8个系统音色了！
+
 本插件没有使用系统音色的功能，如果需要请前往：https://github.com/cyber-moshen/astrbot_plugin_VITS
 插件配置页面：
 <img width="696" alt="屏幕截图 2025-02-09 181308" src="https://github.com/user-attachments/assets/5d0bf1b9-af48-4bb0-98ad-64c68803bcd8" />
