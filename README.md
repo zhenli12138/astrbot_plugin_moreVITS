@@ -2,12 +2,12 @@
 
 本插件没有使用系统音色的功能，如果需要请前往：https://github.com/cyber-moshen/astrbot_plugin_VITS
 插件配置页面：
-<img width="696" alt="屏幕截图 2025-02-09 181308" src="https://github.com/user-attachments/assets/5d0bf1b9-af48-4bb0-98ad-64c68803bcd8" />
+待补充
 
 插件内置了星穹铁道三月七的参考音频，用户在只填写API密钥的情况下即可使用
 
-插件指令：
-<img width="869" alt="屏幕截图 2025-02-09 181521" src="https://github.com/user-attachments/assets/7d50db2b-3806-4828-af03-0413b9b73202" />
+插件指令：插件用法页面有详细的描写
+
 音频文件只能手动添加，qq无法读取，图片内为错别字。
 
 有问题可以@我，我就在大群里哦
