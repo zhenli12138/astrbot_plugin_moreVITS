@@ -9,7 +9,7 @@ import base64
 import os
 
 #@register 装饰器注册插件，否则 AstrBot 无法识别。
-@register("astrbot_plugin_moreVITS", "达莉娅", "硅基流动利用用户的参考音频进行文本转语音的功能，测试中音频文件（测试用的.mp3）可用，url未测，内置了一个测试用的三月七（填写api就可用）", "0.1.0")
+@register("astrbot_plugin_moreVITS", "达莉娅", "硅基流动利用用户的参考音频进行文本转语音的功能，测试中音频文件（测试用的.mp3）可用，url未测，内置了一个测试用的三月七（填写api就可用）", "0.1.2")
 class MyPlugin(Star):
     #在__init__中会传入Context 对象，这个对象包含了 AstrBot 的大多数组件
     def __init__(self, context: Context, config: dict):
@@ -112,8 +112,6 @@ class MyPlugin(Star):
 
     @filter.on_decorating_result()
     async def on_decorating_result(self, event: AstrMessageEvent):
-        print(self.master)
-        print(self.flag)
         # 插件是否启用
         if not self.enabled:
             return
@@ -127,13 +125,14 @@ class MyPlugin(Star):
                 chain2 = CommandResult().message("文字转语音错误，music_url配置错误")
                 await event.send(chain2)
                 return
-
         if self.master == 1:
             self.master = 0
             return
-
+        adapter_name = event.get_platform_name()
+        if adapter_name == "qq_official":
+            print("检测为官方机器人，自动忽略转语音请求")
+            return
         result = event.get_result()
-        chain = result.chain
         self.text = result.get_plain_text()
         print(self.text)
         try:
@@ -195,25 +194,3 @@ class MyPlugin(Star):
             audio_array = bytearray(file.read())
         # 将音频数组转换为Base64编码
         self.base64_audio = base64.b64encode(audio_array).decode('utf-8')
-
-    '''
-        self.api_voice = config.get('voice', 'FunAudioLLM/CosyVoice2-0.5B:claire')  # 提取角色名称
-        if not self.api_voice:
-            self.api_voice = 'FunAudioLLM/CosyVoice2-0.5B:claire'          
-    '''
-    '''
-    def pre_set_timbre(self,result):
-        client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.api_url
-        )
-        with client.audio.speech.with_streaming_response.create(
-                model=self.api_name,  # 发送模型名称
-                voice=self.api_voice,  # 系统预置音色
-                # 用户输入信息
-                input=self.text,
-                response_format="mp3"  # 支持 mp3, wav, pcm, opus 格式
-        ) as response:
-            response.stream_to_file(self.output_audio_path)
-        result.chain = [Record(file=self.output_audio_path)]
-    '''
