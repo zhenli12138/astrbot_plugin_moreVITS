@@ -11,12 +11,12 @@ from astrbot.core.provider.entites import LLMResponse
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，测试中音频文件（测试用的.mp3）可用，url未测，内置了一个测试用的三月七（填写api就可用）",
-          "0.1.2")
+          "0.1.3")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
         self.base64_audio = ''
-        self.output_audio_path = "data/plugins/astrbot_plugin_moreVITS/voice.wav"
+        self.output_audio_path = "data/plugins/astrbot_plugin_moreVITS/voice.mp3"
         self.flag = 1
         self.flag_llm = 0
 
@@ -149,7 +149,7 @@ class MyPlugin(Star):
                 self.dynamic_timbre(text)
                 self.flag_llm = 1
         except Exception as e:
-            chain3 = CommandResult().message("文字转语音错误，网络错误或不支持!")
+            chain3 = CommandResult().message(f"文字转语音错误，{e}")
             await event.send(chain3)
 
     def dynamic_timbre(self,text):
