@@ -159,8 +159,6 @@ class MyPlugin(Star):
             output_audio_path = self.output.get()
             self.trash.put(output_audio_path)
             logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
-            result.chain.remove(Plain(text))
-            await event.send(result)
             result.chain = [Record(file=output_audio_path)]
         else:
             logger.error(f"发生未知错误!")
