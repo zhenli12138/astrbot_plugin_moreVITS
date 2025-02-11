@@ -159,8 +159,6 @@ class MyPlugin(Star):
             output_audio_path = self.output.get()
             self.trash.put(output_audio_path)
             logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
-            result.chain.append(Image.fromURL(
-                "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"))
             result.chain.remove(Plain(text))
             await event.send(result)
             result.chain = [Record(file=output_audio_path)]
