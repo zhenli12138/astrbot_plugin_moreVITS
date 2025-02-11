@@ -7,48 +7,50 @@ from pathlib import Path
 from openai import OpenAI
 import base64
 import os
+from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
-          "硅基流动利用用户的参考音频进行文本转语音的功能，测试中音频文件（测试用的.mp3）可用，url未测，内置了一个测试用的三月七（填写api就可用）",
-          "0.1.3")
+          "【硅基流动】利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
+          "1.0.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
-        self.base64_audio = ''
-        self.output_audio_path = "data/plugins/astrbot_plugin_moreVITS/voice.mp3"
-        self.flag = 1
-        self.flag_llm = 0
-
+        self.output = Queue()
+        self.trash = Queue()
+        self.chain_message = CommandResult()
+        self.counter = 0
+        self.flag_mode = 1
+        self.enabled = True
         self.config = config
-
-        self.api_url = config.get('url', 'https://api.siliconflow.cn/v1')
-        if not self.api_url:
-            self.api_url = 'https://api.siliconflow.cn/v1'
-
+        self.base64_audio = ''
+        self.api_url = 'https://api.siliconflow.cn/v1'
+        self.api_name = config.get('name', 'FunAudioLLM/CosyVoice2-0.5B')
+        self.music_mp3 = config.get('参考音频文件', './data/plugins/astrbot_plugin_moreVITS/三月七.mp3')
+        self.music_text = config.get('参考音频文本',
+                                     '所有没见过的东西都要拍下来，这样就不忘啦，等等我！'
+                                     '这个列车长绝对喜欢。'
+                                     '唔，这个姿势，嗐，真是不会拍照呢。'
+                                     '茄子！怎么样怎么样，很有意思吧？'
+                                     '嗯？你怎么还在发呆？')
+        self.music_url = config.get('参考音频url', '')
         self.api_key = config.get('apikey', '')
 
-        self.api_name = config.get('name', 'FunAudioLLM/CosyVoice2-0.5B')
         if not self.api_name:
             self.api_name = 'FunAudioLLM/CosyVoice2-0.5B'
-
-        self.music_mp3 = config.get('参考音频文件', 'data/plugins/astrbot_plugin_moreVITS/三月七.mp3')
         if not self.music_mp3:
-            self.music_mp3 = 'data/plugins/astrbot_plugin_moreVITS/三月七.mp3'
-
-        self.music_text = config.get('参考音频文本',
-                                     '所有没见过的东西都要拍下来，这样就不忘啦，等等我！这个列车长绝对喜欢。唔，这个姿势，嗐，真是不会拍照呢。茄子！怎么样怎么样，很有意思吧？嗯？你怎么还在发呆？')
+                self.music_mp3 = './data/plugins/astrbot_plugin_moreVITS/三月七.mp3'
         if not self.music_text:
-            self.music_text = '所有没见过的东西都要拍下来，这样就不忘啦，等等我！这个列车长绝对喜欢。唔，这个姿势，嗐，真是不会拍照呢。茄子！怎么样怎么样，很有意思吧？嗯？你怎么还在发呆？'
-
-        self.music_url = config.get('参考音频url', '')
+            self.music_text = ('所有没见过的东西都要拍下来，这样就不忘啦，等等我！'
+                               '这个列车长绝对喜欢。'
+                               '唔，这个姿势，嗐，真是不会拍照呢。'
+                               '茄子！怎么样怎么样，很有意思吧？'
+                               '嗯？你怎么还在发呆？')
         if not self.music_url:
             self.music_url = ''
 
-        self.enabled = True
-
         if not os.path.exists(self.music_mp3):
-            pass
+            logger.error(f"未检测到音频文件:{self.music_mp3}")
         else:
             self.music_file = open(self.music_mp3, "rb")
 
@@ -58,10 +60,10 @@ class MyPlugin(Star):
     async def change(self, event: AstrMessageEvent, a: int):
         '''/change 1使用参考音频文件，2为参考音频url，默认1'''
         if a == 1:
-            self.flag = 1
+            self.flag_mode = 1
             yield event.plain_result(f"使用参考音频文件模式")
         else:
-            self.flag = 2
+            self.flag_mode = 2
             yield event.plain_result(f"使用参考音频url模式")
 
     '''---------------------------------------------------'''
@@ -117,9 +119,17 @@ class MyPlugin(Star):
             yield event.chain_result(chain2)
 
     '''---------------------------------------------------'''
-
-    @filter.on_llm_response(priority=1)
-    async def on_llm_resp(self, event: AstrMessageEvent, resp: LLMResponse):
+    @filter.on_decorating_result()
+    async def on_decorating_result(self, event: AstrMessageEvent):
+        result = event.get_result()
+        text = result.get_plain_text()
+        if not result.chain:
+            logger.info(f"返回消息为空,pass")
+            return
+        if not result.is_llm_result():
+            logger.info(f"非LLM消息,pass")
+            return
+        logger.info(f"LLM返回的文本是：{text}")
         adapter_name = event.get_platform_name()
         if not self.enabled:
             return
@@ -127,7 +137,7 @@ class MyPlugin(Star):
             chain1 = CommandResult().message("文字转语音错误，API配置错误")
             await event.send(chain1)
             return
-        if self.flag == 2:
+        if self.flag_mode == 2:
             if not self.music_url:
                 chain2 = CommandResult().message("文字转语音错误，music_url配置错误")
                 await event.send(chain2)
@@ -136,20 +146,27 @@ class MyPlugin(Star):
             logger.info("检测为官方机器人，自动忽略转语音请求")
             return
 
-        message = event.get_message_str()
-        logger.info(f"发向LLM处理的文本是：{message}")
-        text = resp.completion_text
-        logger.info(f"LLM返回的文本是：{text}")
-
         try:
-            if self.flag == 1:
+            if self.flag_mode == 1:
                 self.dynamic_timbre2(text)
-                self.flag_llm = 1
             else:
                 self.dynamic_timbre(text)
-                self.flag_llm = 1
         except Exception as e:
             chain3 = CommandResult().message(f"文字转语音错误，{e}")
+            await event.send(chain3)
+
+        if not self.output.empty():
+            output_audio_path = self.output.get()
+            self.trash.put(output_audio_path)
+            logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
+            result.chain.append(Image.fromURL(
+                "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"))
+            result.chain.remove(Plain(text))
+            await event.send(result)
+            result.chain = [Record(file=output_audio_path)]
+        else:
+            logger.error(f"发生未知错误!")
+            chain3 = CommandResult().message(f"发生未知错误!")
             await event.send(chain3)
 
     def dynamic_timbre(self,text):
@@ -170,7 +187,8 @@ class MyPlugin(Star):
                     }
                 ]}
         ) as response:
-            response.stream_to_file(self.output_audio_path)
+            output_audio_path = self.queue()
+            response.stream_to_file(output_audio_path)
 
     def dynamic_timbre2(self,text):
         self.base64()
@@ -191,7 +209,9 @@ class MyPlugin(Star):
                     }
                 ]}
         ) as response:
-            response.stream_to_file(self.output_audio_path)
+            output_audio_path = self.queue()
+            response.stream_to_file(output_audio_path)
+
 
     def base64(self):
         # 读取音频文件并将其转换为数组
@@ -200,15 +220,20 @@ class MyPlugin(Star):
         # 将音频数组转换为Base64编码
         self.base64_audio = base64.b64encode(audio_array).decode('utf-8')
 
+    def queue(self):
+        if self.counter == 20:
+            self.counter = 0
+        self.counter = self.counter + 1
+        output_audio_path = f"./data/plugins/astrbot_plugin_moreVITS/voice{self.counter}.mp3"
+        self.output.put(output_audio_path)
+        return output_audio_path
     '''---------------------------------------------------'''
 
-    @filter.on_decorating_result()
-    async def on_decorating_result(self, event: AstrMessageEvent):
-        result = event.get_result()
-        print(f"发送前消息：{result}")
-        if self.flag_llm == 1:
-            self.flag_llm = 0
-            print(f"转语音执行成功")
-            result.chain = [Record(file=self.output_audio_path)]
-        else:
-            print(f"LLM回复未执行,等待执行")
+    @filter.after_message_sent()
+    async def after_message_sent(self, event: AstrMessageEvent):
+        if not self.trash.empty():
+            output_audio_path = self.trash.get()
+            if os.path.exists(output_audio_path):
+                os.remove(output_audio_path)
+                logger.warning(f"已清除1个trash，队列中还有【{self.trash.qsize()}】条trash待清除")
+
