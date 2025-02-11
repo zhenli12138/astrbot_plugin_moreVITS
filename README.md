@@ -33,11 +33,14 @@
 
 # 更新
 由于QQ官方机器人不支持发语音，现版本会自动忽略QQ官方机器人，避免出错。
+
 如果bot回复的消息是富文本（比如带图片）则冲突，已解决。
+
 非windows系统无法读取文件问题，已解决。
+
 同时大量消息转语音会卡问题，已解决。
 
-解决了跟群主的astrbot_plugin_wake_enhance冲突
+跟群主的astrbot_plugin_wake_enhance冲突，已解决。
 # 支持
 [帮助文档](https://astrbot.soulter.top/center/docs/%E5%BC%80%E5%8F%91/%E6%8F%92%E4%BB%B6%E5%BC%80%E5%8F%91/
 )
