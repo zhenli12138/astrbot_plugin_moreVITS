@@ -11,8 +11,8 @@ from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
-          "【硅基流动】利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
-          "1.0.0")
+          "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
+          "1.0.5")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
@@ -52,7 +52,7 @@ class MyPlugin(Star):
         if not os.path.exists(self.music_mp3):
             logger.error(f"未检测到音频文件:{self.music_mp3}")
         else:
-            self.music_file = open(self.music_mp3, "rb")
+            logger.info(f"检测到音频文件:{self.music_mp3}")
 
     '''---------------------------------------------------'''
 
@@ -154,16 +154,24 @@ class MyPlugin(Star):
         except Exception as e:
             chain3 = CommandResult().message(f"文字转语音错误，{e}")
             await event.send(chain3)
+            return
 
         if not self.output.empty():
             output_audio_path = self.output.get()
             self.trash.put(output_audio_path)
             logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
+            result.chain.remove(Plain(text))
+            if not result.chain:
+                logger.info(f"无富文本消息，pass")
+            else:
+                await event.send(result)
+                logger.info(f"富文本消息发送成功")
             result.chain = [Record(file=output_audio_path)]
         else:
             logger.error(f"发生未知错误!")
-            chain3 = CommandResult().message(f"发生未知错误!")
+            chain3 = CommandResult().message(f"文字转语音失败，发生未知错误!")
             await event.send(chain3)
+            return
 
     def dynamic_timbre(self,text):
         client = OpenAI(
