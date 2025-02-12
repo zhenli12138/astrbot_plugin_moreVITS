@@ -9,6 +9,7 @@ import base64
 import os
 from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
+import re
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
@@ -161,14 +162,33 @@ class MyPlugin(Star):
             self.trash.put(output_audio_path)
             logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
             result.chain.remove(Plain(text))
-            result.chain = [Record(file=output_audio_path)]
-            await event.send(result)
-
+            voice = MessageChain()
+            voice.chain.append(Record(file=output_audio_path))
+            await event.send(voice)
         else:
             logger.error(f"发生未知错误!")
             chain3 = CommandResult().message(f"文字转语音失败，发生未知错误!")
             await event.send(chain3)
             return
+
+    def remove_emoticons(text):
+        # 定义正则表达式，匹配常见的颜表情
+        emoticon_pattern = r"""
+            [<>]?                # 可选的 < 或 >
+            [:;=8xX]             # 眼睛部分
+            [\-o\*\']?           # 可选的鼻子部分
+            [\)\]\(\[dDpP/\:\}\{@\|\\]  # 嘴巴部分
+            |                   # 或
+            [\)\]\(\[dDpP/\:\}\{@\|\\]  # 嘴巴部分
+            [\-o\*\']?           # 可选的鼻子部分
+            [:;=8xX]             # 眼睛部分
+            [<>]?                # 可选的 < 或 >
+        """
+        # 使用 re.VERBOSE 允许正则表达式中的注释和换行
+        pattern = re.compile(emoticon_pattern, re.VERBOSE)
+        # 使用 sub 方法将匹配到的颜表情替换为空字符串
+        cleaned_text = pattern.sub('', text)
+        return cleaned_text
 
     def dynamic_timbre(self,text):
         client = OpenAI(
