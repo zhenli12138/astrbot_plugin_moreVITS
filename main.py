@@ -228,7 +228,7 @@ class MyPlugin(Star):
         if self.counter == 20:
             self.counter = 0
         self.counter = self.counter + 1
-        output_audio_path = f"./data/plugins/astrbot_plugin_moreVITS/voice{self.counter}.mp3"
+        output_audio_path = f"./data/plugins/astrbot_plugin_morevits/voice{self.counter}.mp3"
         self.output.put(output_audio_path)
         return output_audio_path
     '''---------------------------------------------------'''
