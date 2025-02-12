@@ -26,6 +26,7 @@
 插件指令：
 
 <img width="893" alt="屏幕截图 2025-02-12 192528" src="https://github.com/user-attachments/assets/ef74acf1-ce0b-47a6-9720-955f8bc4fcf8" />
+
 # 配置方法
 参考音频文件：无其他杂音的纯人声音频存放路径文件，例如：./data/plugins/astrbot_plugin_morevits/三月七.mp3
 
