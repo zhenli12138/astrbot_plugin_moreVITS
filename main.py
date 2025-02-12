@@ -10,9 +10,9 @@ import os
 from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 '''---------------------------------------------------'''
-@register("astrbot_plugin_moreVITS", "达莉娅",
+@register("astrbot_plugin_morevits", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
-          "1.0.5")
+          "1.0.6")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
@@ -26,7 +26,7 @@ class MyPlugin(Star):
         self.base64_audio = ''
         self.api_url = 'https://api.siliconflow.cn/v1'
         self.api_name = config.get('name', 'FunAudioLLM/CosyVoice2-0.5B')
-        self.music_mp3 = config.get('参考音频文件', './data/plugins/astrbot_plugin_moreVITS/三月七.mp3')
+        self.music_mp3 = config.get('参考音频文件', './data/plugins/astrbot_plugin_morevits/三月七.mp3')
         self.music_text = config.get('参考音频文本',
                                      '所有没见过的东西都要拍下来，这样就不忘啦，等等我！'
                                      '这个列车长绝对喜欢。'
@@ -39,7 +39,7 @@ class MyPlugin(Star):
         if not self.api_name:
             self.api_name = 'FunAudioLLM/CosyVoice2-0.5B'
         if not self.music_mp3:
-                self.music_mp3 = './data/plugins/astrbot_plugin_moreVITS/三月七.mp3'
+                self.music_mp3 = './data/plugins/astrbot_plugin_morevits/三月七.mp3'
         if not self.music_text:
             self.music_text = ('所有没见过的东西都要拍下来，这样就不忘啦，等等我！'
                                '这个列车长绝对喜欢。'
