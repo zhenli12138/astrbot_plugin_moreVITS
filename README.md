@@ -1,4 +1,4 @@
-# 大量更新，完全重构！许多问题都已解决！
+# 本插件已为正式版v1.1.0
 # 鸣谢
 感谢群友们在本插件测试期间给出的诸多建议，非常感谢！
 # 使用场景
@@ -18,14 +18,14 @@
 
 插件配置页面：
 
-<img width="698" alt="屏幕截图 2025-02-09 194843" src="https://github.com/user-attachments/assets/bf91a180-d9c5-4814-bbfb-05b9bf6b1395" />
+<img width="695" alt="屏幕截图 2025-02-12 192612" src="https://github.com/user-attachments/assets/8084a3f1-9029-4e81-9517-eaf1538f53ae" />
+
 
 插件内置了星穹铁道三月七的参考音频，用户在只填写API密钥的情况下即可使用
 
 插件指令：
 
-<img width="878" alt="屏幕截图 2025-02-09 231426" src="https://github.com/user-attachments/assets/5d8dccce-9626-4179-bde5-8168d9b837fb" />
-
+<img width="893" alt="屏幕截图 2025-02-12 192528" src="https://github.com/user-attachments/assets/ef74acf1-ce0b-47a6-9720-955f8bc4fcf8" />
 # 配置方法
 参考音频文件：无其他杂音的纯人声音频存放路径文件，例如：data/plugins/astrbot_plugin_moreVITS/三月七.mp3
 
@@ -38,11 +38,13 @@
 # 更新
 由于QQ官方机器人不支持发语音，现版本会自动忽略QQ官方机器人，避免出错。
 
+过滤颜表情功能，已添加。
+
 非windows系统无法读取文件问题，已解决。
 
 同时大量消息转语音会卡问题，已解决。
 
-富文本吞图片问题，已解决。
+表情包插件吞图片问题，已解决。
 
 跟群主的astrbot_plugin_wake_enhance冲突，已解决。
 # 支持
