@@ -10,7 +10,7 @@ import os
 from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 '''---------------------------------------------------'''
-@register("astrbot_plugin_morevits", "达莉娅",
+@register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
           "1.0.6")
 class MyPlugin(Star):
