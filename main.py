@@ -13,7 +13,7 @@ import re
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
-          "v1.1.0")
+          "1.0.6")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
@@ -23,7 +23,6 @@ class MyPlugin(Star):
         self.counter = 0
         self.flag_mode = 1
         self.enabled = True
-        self.trap = True
         self.config = config
         self.base64_audio = ''
         self.api_url = 'https://api.siliconflow.cn/v1'
@@ -81,27 +80,6 @@ class MyPlugin(Star):
         self.music_text = music_text
         yield event.plain_result(f"参考音频文本上传完成")
 
-    @filter.command("过滤开关")
-    async def trap(self, event: AstrMessageEvent):
-        '''这是一个过滤颜表情开关指令'''
-        message_chain = event.get_messages()  # 用户所发的消息的消息链
-        logger.info(message_chain)
-        user_id = event.get_sender_id()
-        chain1 = [
-            At(qq=user_id),  # At 消息发送者
-            Plain(f"\n过滤已经启动"),
-            Face(id=337),
-        ]
-        chain2 = [
-            At(qq=user_id),  # At 消息发送者
-            Plain(f"\n过滤已经关闭"),
-            Face(id=337),
-        ]
-        self.trap = not self.trap
-        if self.trap:
-            yield event.chain_result(chain1)
-        else:
-            yield event.chain_result(chain2)
     '''---------------------------------------------------'''
 
     @filter.command("vitspro")
@@ -140,6 +118,10 @@ class MyPlugin(Star):
     async def on_decorating_result(self, event: AstrMessageEvent):
         result = event.get_result()
         text = result.get_plain_text()
+        adapter_name = event.get_platform_name()
+        if adapter_name == "qq_official":
+            logger.info("检测为官方机器人，自动忽略转语音请求")
+            return
         if not result.chain:
             logger.info(f"返回消息为空,pass")
             return
@@ -148,10 +130,8 @@ class MyPlugin(Star):
             return
         logger.info(f"LLM返回的文本是：{text}")
         result.chain.remove(Plain(text))
-        if self.trap:
-            text = self.remove_complex_emoticons(text)
-            logger.info(f"过滤颜表情后的文本是：{text}")
-        adapter_name = event.get_platform_name()
+        text = self.remove_complex_emoticons(text)
+        logger.info(f"过滤颜表情后的文本是：{text}")
         if not self.enabled:
             return
         if not self.api_key:
@@ -163,10 +143,6 @@ class MyPlugin(Star):
                 chain2 = CommandResult().message("文字转语音错误，music_url配置错误")
                 await event.send(chain2)
                 return
-        if adapter_name == "qq_official":
-            logger.info("检测为官方机器人，自动忽略转语音请求")
-            return
-
         try:
             if self.flag_mode == 1:
                 self.dynamic_timbre2(text)
