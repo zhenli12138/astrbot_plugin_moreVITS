@@ -1,4 +1,9 @@
 {
+    "概率触发": {
+        "description": "请输入转语音触发概率（0到1之间，1为必定触发，0则关闭）",
+        "type": "float",
+        "hint": ""
+    },
     "apikey": {
         "description": "请输入API的密钥（必须输入）",
         "type": "string",

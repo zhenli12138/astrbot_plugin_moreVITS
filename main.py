@@ -1,3 +1,5 @@
+import random
+
 from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
 from astrbot.api.star import Context, Star, register
 from astrbot.api import logger
@@ -7,22 +9,26 @@ from pathlib import Path
 from openai import OpenAI
 import base64
 import os
+import json
 from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 import re
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
-          "1.0.6")
+          "v1.2.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
+        self.rooms = []
         self.output = Queue()
         self.trash = Queue()
         self.chain_message = CommandResult()
         self.counter = 0
         self.flag_mode = 1
+        self.ran = config.get('概率触发', 0.1)
         self.enabled = True
+        self.trap = True
         self.config = config
         self.base64_audio = ''
         self.api_url = 'https://api.siliconflow.cn/v1'
@@ -32,6 +38,8 @@ class MyPlugin(Star):
         self.music_url = config.get('参考音频url', '')
         self.music_text_file = config.get('参考音频文本txt模式', '')
         self.api_key = config.get('apikey', '')
+        if not self.ran:
+            self.ran = 0.5
         if os.path.exists(self.music_text_file):
             with open(self.music_text_file, 'r',encoding="utf-8") as file:
                 self.music_text = file.read()
@@ -43,14 +51,35 @@ class MyPlugin(Star):
             self.music_text = "所有没见过的东西都要拍下来，这样就不会忘了，等等我。这个列车长绝对喜欢。怎么样怎么样，很有意思吧？你怎么还在发呆？嘿嘿，第一张合照就归我啦。你没事吧，听得清我说话吗？记不记得自己叫什么名字？那可麻烦了，能努力回忆一下吗，你的名字是？那你自己小心哦。要不你把这个拿上吧。"
         if not self.music_url:
             self.music_url = ''
-
+        self.file_path = './data/plugins/astrbot_plugin_morevits/data.jsonl'
+        if not os.path.exists(self.file_path):
+            self.save_game()
+            print(f"文件 {self.file_path} 不存在，已创建并初始化。")
+        else:
+            print(f"文件 {self.file_path} 已存在，跳过创建。")
+        self.load_game()
         if not os.path.exists(self.music_mp3):
             logger.error(f"未检测到音频文件:{self.music_mp3}")
         else:
             logger.info(f"检测到音频文件:{self.music_mp3}")
 
     '''---------------------------------------------------'''
+    def load_game(self):
+        dicts = []
+        with open(self.file_path, 'r') as f:
+            for line in f:
+                dicts.append(json.loads(line.strip()))
+        # 分配到各自的字典
+        if not dicts:  # 如果 dicts 为空
+            logger.warning("加载的数据为空")
+            return
+        else:
+            self.rooms = dicts[0]
+            return
 
+    def save_game(self):
+        with open(self.file_path, 'w') as f:
+            f.write(json.dumps(self.rooms) + '\n')
     @filter.command("change")
     async def change(self, event: AstrMessageEvent, a: int):
         '''/change 1使用参考音频文件，2为参考音频url，默认1'''
@@ -80,20 +109,35 @@ class MyPlugin(Star):
         self.music_text = music_text
         yield event.plain_result(f"参考音频文本上传完成")
 
-    '''---------------------------------------------------'''
-
-    @filter.command("vitspro")
-    async def switch(self, event: AstrMessageEvent):
-        '''这是一个插件开关指令'''
-        message_str = event.message_str  # 用户发的纯文本消息字符串
-        message_chain = event.get_messages()  # 用户所发的消息的消息链
-        logger.info(message_chain)
-        user_name = event.get_sender_name()
+    @filter.command("过滤开关")
+    async def trap(self, event: AstrMessageEvent):
+        '''这是一个过滤颜表情开关指令'''
         user_id = event.get_sender_id()
-        time = event.message_obj.timestamp
         chain1 = [
             At(qq=user_id),  # At 消息发送者
-            Plain(f"\n插件已经启动"),
+            Plain(f"\n过滤已经启动"),
+            Face(id=337),
+        ]
+        chain2 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n过滤已经关闭"),
+            Face(id=337),
+        ]
+        self.trap = not self.trap
+        if self.trap:
+            yield event.chain_result(chain1)
+        else:
+            yield event.chain_result(chain2)
+    '''---------------------------------------------------'''
+
+    @filter.command("morevits")
+    async def switch(self, event: AstrMessageEvent):
+        '''这是一个插件开关指令'''
+        user_id = event.get_sender_id()
+        room  = event.get_group_id()
+        chain1 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n本群插件已经启动（仅本群）"),
             Face(id=337),
             Image.fromURL(
                 "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"),
@@ -101,16 +145,19 @@ class MyPlugin(Star):
         ]
         chain2 = [
             At(qq=user_id),  # At 消息发送者
-            Plain(f"\n插件已经关闭"),
+            Plain(f"\n本群插件已经关闭（仅本群）"),
             Face(id=337),
             Image.fromURL(
                 "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"),
             # 从 URL 发送图片
         ]
-        self.enabled = not self.enabled
-        if self.enabled:
+        if room in self.rooms:
+            self.rooms.remove(room)
+            self.save_game()
             yield event.chain_result(chain1)
         else:
+            self.rooms.append(room)
+            self.save_game()
             yield event.chain_result(chain2)
 
     '''---------------------------------------------------'''
@@ -118,6 +165,7 @@ class MyPlugin(Star):
     async def on_decorating_result(self, event: AstrMessageEvent):
         result = event.get_result()
         text = result.get_plain_text()
+        room = event.get_group_id()
         adapter_name = event.get_platform_name()
         if adapter_name == "qq_official":
             logger.info("检测为官方机器人，自动忽略转语音请求")
@@ -128,12 +176,18 @@ class MyPlugin(Star):
         if not result.is_llm_result():
             logger.info(f"非LLM消息,pass")
             return
+        if room in self.rooms :
+            logger.info(f"本群插件已关闭")
+            return
+        random_float = random.random()
+        if  random_float>=self.ran:
+            logger.info("随机取消转语音")
+            return
         logger.info(f"LLM返回的文本是：{text}")
         result.chain.remove(Plain(text))
-        text = self.remove_complex_emoticons(text)
-        logger.info(f"过滤颜表情后的文本是：{text}")
-        if not self.enabled:
-            return
+        if self.trap:
+            text = self.remove_complex_emoticons(text)
+            logger.info(f"过滤颜表情后的文本是：{text}")
         if not self.api_key:
             chain1 = CommandResult().message("文字转语音错误，API配置错误")
             await event.send(chain1)
@@ -143,6 +197,8 @@ class MyPlugin(Star):
                 chain2 = CommandResult().message("文字转语音错误，music_url配置错误")
                 await event.send(chain2)
                 return
+
+
         try:
             if self.flag_mode == 1:
                 self.dynamic_timbre2(text)
@@ -245,4 +301,3 @@ class MyPlugin(Star):
             if os.path.exists(output_audio_path):
                 os.remove(output_audio_path)
                 logger.warning(f"已清除1个trash，队列中还有【{self.trash.qsize()}】条trash待清除")
-
