@@ -295,7 +295,7 @@ class MyPlugin(Star):
     '''---------------------------------------------------'''
 
     @filter.after_message_sent()
-    async def after_message_sent(self, event: AstrMessageEvent):
+    async def after_message(self, event: AstrMessageEvent):
         if not self.trash.empty():
             output_audio_path = self.trash.get()
             if os.path.exists(output_audio_path):
