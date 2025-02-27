@@ -1,330 +1,303 @@
-from typing import List, Dict, Optional
-from astrbot.api.event import filter
+import random
+
+from astrbot.api.event import filter, AstrMessageEvent, MessageEventResult
+from astrbot.api.star import Context, Star, register
+from astrbot.api import logger
 from astrbot.api.all import *
+import inspect
+from pathlib import Path
+from openai import OpenAI
+import base64
 import os
-from data.plugins.astrbot_plugin_moreapi.api_collection import api,emoji,image,translate, text, search
-from data.plugins.astrbot_plugin_moreapi.api_collection import video, music, guangyu, chess, blue_archive
-@register("astrbot_plugin_moreapi", "达莉娅",
-          "多功能调用插件，发【api】看菜单",
-          "v1.7.0")
+import json
+from queue import Queue
+from astrbot.core.provider.entites import LLMResponse
+import re
+'''---------------------------------------------------'''
+@register("astrbot_plugin_moreVITS", "达莉娅",
+          "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
+          "v1.2.0")
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
-        self.song_name = None
+        self.rooms = []
+        self.output = Queue()
+        self.trash = Queue()
+        self.chain_message = CommandResult()
+        self.counter = 0
+        self.flag_mode = 1
+        self.ran = config.get('概率触发', 0.1)
+        self.enabled = True
+        self.trap = True
         self.config = config
-        #self.api_name = config.get('name', 'FunAudioLLM/CosyVoice2-0.5B')
-    '''---------------------------------------------------'''
-    @command("test")
-    async def test(self, event: AstrMessageEvent):
-        provider = self.context.get_using_provider()
-        if provider:
-            response = await provider.text_chat("你好", session_id=event.session_id)
-            print(response.completion_text)  # LLM 返回的结果
-
-    '''注册一个 LLM 函数工具function-calling 给了大语言模型调用外部工具的能力。
-    注册一个 function-calling 函数工具。
-    请务必按照以下格式编写一个工具（包括函数注释，AstrBot 会尝试解析该函数注释）'''
-    '''---------------------------------------------------'''
-    @filter.command("api")
-    async def menu(self, event: AstrMessageEvent):
-        img = "./data/plugins/astrbot_plugin_moreapi/menu_output.png"
-        if not os.path.exists(img):
-            result = api.get_menu()
+        self.base64_audio = ''
+        self.api_url = 'https://api.siliconflow.cn/v1'
+        self.api_name = config.get('name', 'FunAudioLLM/CosyVoice2-0.5B')
+        self.music_mp3 = config.get('参考音频文件', './data/plugins/astrbot_plugin_morevits/三月七.mp3')
+        self.music_text = config.get('参考音频文本','')
+        self.music_url = config.get('参考音频url', '')
+        self.music_text_file = config.get('参考音频文本txt模式', '')
+        self.api_key = config.get('apikey', '')
+        if not self.ran:
+            self.ran = 0.5
+        if os.path.exists(self.music_text_file):
+            with open(self.music_text_file, 'r',encoding="utf-8") as file:
+                self.music_text = file.read()
+        if not self.api_name:
+            self.api_name = 'FunAudioLLM/CosyVoice2-0.5B'
+        if not self.music_mp3:
+                self.music_mp3 = './data/plugins/astrbot_plugin_morevits/三月七.mp3'
+        if not self.music_text:
+            self.music_text = "所有没见过的东西都要拍下来，这样就不会忘了，等等我。这个列车长绝对喜欢。怎么样怎么样，很有意思吧？你怎么还在发呆？嘿嘿，第一张合照就归我啦。你没事吧，听得清我说话吗？记不记得自己叫什么名字？那可麻烦了，能努力回忆一下吗，你的名字是？那你自己小心哦。要不你把这个拿上吧。"
+        if not self.music_url:
+            self.music_url = ''
+        self.file_path = './data/plugins/astrbot_plugin_morevits/data.jsonl'
+        if not os.path.exists(self.file_path):
+            self.save_game()
+            print(f"文件 {self.file_path} 不存在，已创建并初始化。")
         else:
-            result = event.make_result()
-            result.chain = [Plain(f"MOREAPI菜单：\n"), Image.fromFileSystem(img)]
-        await event.send(result)
-    @filter.command("光遇任务")
-    async def trap0(self, event: AstrMessageEvent):
-        result = guangyu.fetch_daily_tasks()
-        await event.send(result)
-    @filter.command("小姐姐视频")
-    async def trap1(self, event: AstrMessageEvent):
-        result = video.xjj()
-        await event.send(result)
-    @filter.command("电影票房")
-    async def trap2(self, event: AstrMessageEvent):
-        result = text.movie()
-        await event.send(result)
-    @filter.command("b站番剧")
-    async def trap3(self, event: AstrMessageEvent,num:Optional[str] = '5'):
-        result = search.get_update_days(num)
-        await event.send(result)
-    @filter.command("cosplay")
-    async def trap4(self, event: AstrMessageEvent):
-        result = image.fetch_cosplay_data()
-        await event.send(result)
-    @filter.command("翻译")
-    async def trap5(self, event: AstrMessageEvent,a:str):
-        result = translate.translate_text(a)
-        await event.send(result)
-    @filter.command("每日段子")
-    async def trap6(self, event: AstrMessageEvent):
-        result = text.get_random_text()
-        await event.send(result)
-    @filter.command("毒鸡汤")
-    async def trap9(self, event: AstrMessageEvent):
-        result = text.get_dujitang()
-        await event.send(result)
-    @filter.command("搜狗搜图")
-    async def trap7(self, event: AstrMessageEvent,a:str):
-        result = search.fetch_image_url(a)
-        await event.send(result)
-    @filter.command("天气")
-    async def trap8(self, event: AstrMessageEvent,a:str):
-        result = search.get_weather(a)
-        await event.send(result)
-    @filter.command("头像框")
-    async def trap10(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        result = emoji.get_qq_avatar(ids)
-        await event.send(result)
-    @filter.command("小人举牌")
-    async def trap11(self, event: AstrMessageEvent,a:str):
-        result = emoji.fetch_image_from_api(a)
-        await event.send(result)
-    @filter.command("音乐推荐")
-    async def trap12(self, event: AstrMessageEvent):
-        result = music.get_music()
-        det = music.search_music3()
-        voice = MessageChain()
-        voice.chain.append(Record(file=det))
-        await event.send(voice)
-        await event.send(result)
-    @filter.command("随机原神")
-    async def trap13(self, event: AstrMessageEvent):
-        result = image.call_api()
-        await event.send(result)
-    @filter.command("随机龙图")
-    async def trap14(self, event: AstrMessageEvent):
-        result = image.call_api2()
-        await event.send(result)
-    @filter.command("温柔语录")
-    async def trap15(self, event: AstrMessageEvent):
-        result = text.get_random_text2()
-        await event.send(result)
-    @filter.command("手写")
-    async def trap16(self, event: AstrMessageEvent,a:str):
-        result = emoji.generate_image12(a)
-        await event.send(result)
-    @filter.command("塔罗牌")
-    async def trap17(self, event: AstrMessageEvent):
-        result = image.get_tarot_reading()
-        await event.send(result)
-    @filter.command("随机生成超能力")
-    async def trap18(self, event: AstrMessageEvent):
-        result = image.get_random_superpower()
-        await event.send(result)
-    @filter.command("网页截图")
-    async def trap19(self, event: AstrMessageEvent, url: str):
-        result = image.get_webpage_screenshot(url)
-        await event.send(result)
-    @filter.command("emoji合成")
-    async def trap20(self, event: AstrMessageEvent, emoji1: str, emoji2: str):
-        result = emoji.mix_emojis(emoji1, emoji2)
-        await event.send(result)
-    @filter.command("ikun图片")
-    async def trap21(self, event: AstrMessageEvent, lx: str = "bqb"):
-        result = image.get_ikun_image(lx)
-        await event.send(result)
-    @filter.command("原神cosplay")
-    async def trap22(self, event: AstrMessageEvent):
-        result = image.get_random_genshin_cosplay()
-        await event.send(result)
-    @filter.command("搜索音乐")
-    async def trap23(self, event: AstrMessageEvent, song_name: str, n: Optional[str] = None):
-        self.song_name = song_name
-        result = music.search_music(song_name, n)
-        await event.send(result)
-    @filter.command("音乐")
-    async def trap24(self, event: AstrMessageEvent,n: int):
-        result = music.search_music(self.song_name, n)
-        det = music.search_music2()
-        voice = MessageChain()
-        voice.chain.append(Record(file=det))
-        await event.send(voice)
-        await event.send(result)
-    @filter.command("五子棋")
-    async def trap25(self, event: AstrMessageEvent, types:str = '0', x: Optional[str] = None,y: Optional[str] = None):
-        qq = event.get_sender_id()
-        group = event.get_group_id()
-        result = chess.play_gobang(qq, group, types, x, y)
-        await event.send(result)
-    @filter.command("每日新闻")
-    async def trap26(self, event: AstrMessageEvent):
-        result = image.get_daily_60s_news()
-        await event.send(result)
-    @filter.command("搜索b站视频")
-    async def trap27(self, event: AstrMessageEvent, msg: str, n:Optional[str]= "1"):
-        result = video.search_bilibili_video(msg, n)
-        det = video.movie1()
-        voice = MessageChain()
-        voice.chain.append(Video.fromURL(det))
-        await event.send(voice)
-        await event.send(result)
-    @filter.command("百科查询")
-    async def trap28(self, event: AstrMessageEvent, msg: str):
-        result = search.get_baike_info(msg)
-        await event.send(result)
-    @filter.command("电视剧排行榜")
-    async def trap29(self, event: AstrMessageEvent):
-        result = text.get_tv_show_heat_ranking()
-        await event.send(result)
-    @filter.command("斗图")
-    async def trap30(self, event: AstrMessageEvent, msg: str):
-        result = image.get_doutu_images(msg)
-        await event.send(result)
-    @filter.command("百度题库")
-    async def trap31(self, event: AstrMessageEvent, question: str):
-        result = search.get_baidu_tiku_answer(question)
-        await event.send(result)
-    @filter.command("ba攻略")
-    async def trap32(self, event: AstrMessageEvent,a: str):
-        ba = blue_archive.Baarchive()
-        result = ba.handle_blue_archive(a)
-        await event.send(result)
-    @filter.command("随机制作")
-    async def emoji0(self, event: AstrMessageEvent,msg:Optional[str] = '',msg2:Optional[str] = ''):
-        ids = emoji.parse_target(event)
-        ids2 = emoji.parse_target2(event,ids)
-        data = emoji.fetch_image2(ids,ids2,msg,msg2)
-        await event.send(data)
-    @filter.command("摸头")
-    async def emoji1(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "摸头")
-        await event.send(data)
-    @filter.command("感动哭了")
-    async def emoji2(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "感动哭了")
-        await event.send(data)
-    @filter.command("膜拜")
-    async def emoji3(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "膜拜")
-        await event.send(data)
-    @filter.command("咬")
-    async def emoji4(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "咬")
-        await event.send(data)
-    @filter.command("可莉吃")
-    async def emoji5(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "可莉吃")
-        await event.send(data)
-    @filter.command("吃掉")
-    async def emoji6(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "吃掉")
-        await event.send(data)
-    @filter.command("捣")
-    async def emoji7(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "捣")
-        await event.send(data)
-    @filter.command("咸鱼")
-    async def emoji8(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "咸鱼")
-        await event.send(data)
-    @filter.command("玩")
-    async def emoji9(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "玩")
-        await event.send(data)
-    @filter.command("舔")
-    async def emoji10(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "舔")
-        await event.send(data)
-    @filter.command("拍")
-    async def emoji11(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "拍")
-        await event.send(data)
-    @filter.command("丢")
-    async def emoji12(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "丢")
-        await event.send(data)
-    @filter.command("撕")
-    async def emoji13(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "撕")
-        await event.send(data)
-    @filter.command("求婚")
-    async def emoji14(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "求婚")
-        await event.send(data)
-    @filter.command("爬")
-    async def emoji15(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "爬")
-        await event.send(data)
-    @filter.command("你可能需要他")
-    async def emoji16(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "你可能需要他")
-        await event.send(data)
-    @filter.command("想看")
-    async def emoji17(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "想看")
-        await event.send(data)
-    @filter.command("点赞")
-    async def emoji18(self, event: AstrMessageEvent):
-        ids = emoji.parse_target(event)
-        data = emoji.fetch_image(ids, "点赞")
-        await event.send(data)
-
-
-
-
-'''
-    @llm_tool("Image_Recognition")
-    async def trap1566(self, event: AstrMessageEvent, image_url: str) -> MessageEventResult:
-        ''''''根据用户提供的图片URL进行图片识别，返回动漫相关信息。用户需要图片识别，提到有关图片识别时调用此工具。
-        Args:
-            image_url (string): 用户提供的图片URL，可以模糊判断
-        ''''''
-        data = self.image_recognition(image_url)
-        result = event.make_result()
-        result.chain = []
-        if data and data.get("code") == 200:
-            result.chain.append(Plain(f"中文标题: {data['data'].get('chinesetitle', 'N/A')}\n"))
-            result.chain.append(Plain(f"原生标题: {data['data'].get('nativetitle', 'N/A')}\n"))
-            result.chain.append(Plain(f"罗马音标题: {data['data'].get('romajititle', 'N/A')}\n"))
-            result.chain.append(Plain(f"相似度: {data['data'].get('similarity', 'N/A')}\n"))
-            result.chain.append(Image.fromURL(data['data'].get('img', 'N/A')))
-            result.chain.append(Plain(f"视频链接: {data['data'].get('video', 'N/A')}\n"))
+            print(f"文件 {self.file_path} 已存在，跳过创建。")
+        self.load_game()
+        if not os.path.exists(self.music_mp3):
+            logger.error(f"未检测到音频文件:{self.music_mp3}")
         else:
-            result.chain.append(Plain("图片识别失败，请检查图片URL或稍后再试。"))
-        return event.set_result(result)
+            logger.info(f"检测到音频文件:{self.music_mp3}")
 
-    def image_recognition(self, image_url):
-        # API地址
-        url = "https://api.52vmy.cn/api/img/fan"
+    '''---------------------------------------------------'''
+    def load_game(self):
+        dicts = []
+        with open(self.file_path, 'r') as f:
+            for line in f:
+                dicts.append(json.loads(line.strip()))
+        # 分配到各自的字典
+        if not dicts:  # 如果 dicts 为空
+            logger.warning("加载的数据为空")
+            return
+        else:
+            self.rooms = dicts[0]
+            return
 
-        # 请求参数
-        params = {
-            "url": image_url
-        }
+    def save_game(self):
+        with open(self.file_path, 'w') as f:
+            f.write(json.dumps(self.rooms) + '\n')
+    @filter.command("change")
+    async def change(self, event: AstrMessageEvent, a: int):
+        '''/change 1使用参考音频文件，2为参考音频url，默认1'''
+        if a == 1:
+            self.flag_mode = 1
+            yield event.plain_result(f"使用参考音频文件模式")
+        else:
+            self.flag_mode = 2
+            yield event.plain_result(f"使用参考音频url模式")
+
+    '''---------------------------------------------------'''
+
+    @filter.command_group("music")
+    async def music(self, event: AstrMessageEvent):
+        '''上传参考音频url【/music addurl】/参考音频文本【/music addtext】'''
+        pass
+
+    @music.command("addurl")
+    async def add(self, event: AstrMessageEvent, music_url: str):
+        '''上传参考音频url'''
+        self.music_url = music_url
+        yield event.plain_result(f"参考音频url上传完成")
+
+    @music.command("addtext")
+    async def sub(self, event: AstrMessageEvent, music_text: str):
+        '''上传参考音频文本'''
+        self.music_text = music_text
+        yield event.plain_result(f"参考音频文本上传完成")
+
+    @filter.command("过滤开关")
+    async def trap(self, event: AstrMessageEvent):
+        '''这是一个过滤颜表情开关指令'''
+        user_id = event.get_sender_id()
+        chain1 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n过滤已经启动"),
+            Face(id=337),
+        ]
+        chain2 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n过滤已经关闭"),
+            Face(id=337),
+        ]
+        self.trap = not self.trap
+        if self.trap:
+            yield event.chain_result(chain1)
+        else:
+            yield event.chain_result(chain2)
+    '''---------------------------------------------------'''
+
+    @filter.command("morevits")
+    async def switch(self, event: AstrMessageEvent):
+        '''这是一个插件开关指令'''
+        user_id = event.get_sender_id()
+        room  = event.get_group_id()
+        chain1 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n本群插件已经启动（仅本群）"),
+            Face(id=337),
+            Image.fromURL(
+                "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"),
+            # 从 URL 发送图片
+        ]
+        chain2 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n本群插件已经关闭（仅本群）"),
+            Face(id=337),
+            Image.fromURL(
+                "https://i0.hdslb.com/bfs/article/bc0ba0646cb50112270da4811799557789b374e3.gif@1024w_820h.avif"),
+            # 从 URL 发送图片
+        ]
+        if room in self.rooms:
+            self.rooms.remove(room)
+            self.save_game()
+            yield event.chain_result(chain1)
+        else:
+            self.rooms.append(room)
+            self.save_game()
+            yield event.chain_result(chain2)
+
+    '''---------------------------------------------------'''
+    @filter.on_decorating_result(priority=100)
+    async def on_decorating_result(self, event: AstrMessageEvent):
+        result = event.get_result()
+        text = result.get_plain_text()
+        room = event.get_group_id()
+        adapter_name = event.get_platform_name()
+        if adapter_name == "qq_official":
+            logger.info("检测为官方机器人，自动忽略转语音请求")
+            return
+        if not result.chain:
+            logger.info(f"返回消息为空,pass")
+            return
+        if not result.is_llm_result():
+            logger.info(f"非LLM消息,pass")
+            return
+        if room in self.rooms :
+            logger.info(f"本群插件已关闭")
+            return
+        random_float = random.random()
+        if  random_float>=self.ran:
+            logger.info("随机取消转语音")
+            return
+        logger.info(f"LLM返回的文本是：{text}")
+        result.chain.remove(Plain(text))
+        if self.trap:
+            text = self.remove_complex_emoticons(text)
+            logger.info(f"过滤颜表情后的文本是：{text}")
+        if not self.api_key:
+            chain1 = CommandResult().message("文字转语音错误，API配置错误")
+            await event.send(chain1)
+            return
+        if self.flag_mode == 2:
+            if not self.music_url:
+                chain2 = CommandResult().message("文字转语音错误，music_url配置错误")
+                await event.send(chain2)
+                return
+
 
         try:
-            # 发送GET请求
-            response = requests.get(url, params=params)
-            response.raise_for_status()  # 检查请求是否成功
-            data = response.json()  # 解析返回的JSON数据
-
-            if data.get("code") == 200:
-                return data
+            if self.flag_mode == 1:
+                self.dynamic_timbre2(text)
             else:
-                print(f"图片识别失败: {data.get('msg', '未知错误')}")
-                return None
-        except requests.exceptions.RequestException as e:
-            print(f"请求异常: {e}")
-            return None
-'''
+                self.dynamic_timbre(text)
+        except Exception as e:
+            chain3 = CommandResult().message(f"文字转语音错误，{e}")
+            await event.send(chain3)
+            return
+
+        if not self.output.empty():
+            output_audio_path = self.output.get()
+            self.trash.put(output_audio_path)
+            logger.info(f"转语音任务成功执行1次，队列中还有【{self.output.qsize()}】条语音待执行")
+            voice = MessageChain()
+            voice.chain.append(Record(file=output_audio_path))
+            await event.send(voice)
+        else:
+            logger.error(f"发生未知错误!")
+            chain3 = CommandResult().message(f"文字转语音失败，发生未知错误!")
+            await event.send(chain3)
+            return
+
+    def remove_complex_emoticons(self,text):
+        pattern = r"""
+                [a-zA-Z]                # 匹配所有英文字母
+                |                       # 或
+                \([^()]+\)              # 匹配括号内的复杂颜表情
+                |                       # 或
+                [^\u4e00-\u9fff，。？！、]  # 匹配非中文、非标点符号、非空格的字符
+        """
+        regex = re.compile(pattern, re.VERBOSE)
+        cleaned_text = regex.sub('', text)
+        return cleaned_text
+
+    def dynamic_timbre(self,text):
+        client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_url
+        )
+        with client.audio.speech.with_streaming_response.create(
+                model=self.api_name,  # 发送模型名称
+                voice="",  # 此处传入空值，表示使用动态音色
+                input=text,
+                response_format="mp3",
+                extra_body={"references": [
+                    {
+                        "audio": f"{self.music_url}",
+                        # 参考音频 url。也支持 base64 格式
+                        "text": f"{self.music_text}",  # 参考音频的文字内容
+                    }
+                ]}
+        ) as response:
+            output_audio_path = self.queue()
+            response.stream_to_file(output_audio_path)
+
+    def dynamic_timbre2(self,text):
+        self.base64()
+        client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.api_url
+        )
+        with client.audio.speech.with_streaming_response.create(
+                model=self.api_name,  # 发送模型名称
+                voice="",  # 此处传入空值，表示使用动态音色
+                input=text,
+                response_format="mp3",
+                extra_body={"references": [
+                    {
+                        "audio": f"data:audio/mpeg;base64,{self.base64_audio}",
+                        # 参考音频 url。也支持 base64 格式
+                        "text": f"{self.music_text}",  # 参考音频的文字内容
+                    }
+                ]}
+        ) as response:
+            output_audio_path = self.queue()
+            response.stream_to_file(output_audio_path)
+
+
+    def base64(self):
+        # 读取音频文件并将其转换为数组
+        with open(self.music_mp3, 'rb') as file:
+            audio_array = bytearray(file.read())
+        # 将音频数组转换为Base64编码
+        self.base64_audio = base64.b64encode(audio_array).decode('utf-8')
+
+    def queue(self):
+        if self.counter == 20:
+            self.counter = 0
+        self.counter = self.counter + 1
+        output_audio_path = f"./data/plugins/astrbot_plugin_morevits/voice{self.counter}.mp3"
+        self.output.put(output_audio_path)
+        return output_audio_path
+    '''---------------------------------------------------'''
+
+    @filter.after_message_sent()
+    async def after_message(self, event: AstrMessageEvent):
+        if not self.trash.empty():
+            output_audio_path = self.trash.get()
+            if os.path.exists(output_audio_path):
+                os.remove(output_audio_path)
+                logger.warning(f"已清除1个trash，队列中还有【{self.trash.qsize()}】条trash待清除")
