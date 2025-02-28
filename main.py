@@ -13,6 +13,9 @@ import json
 from queue import Queue
 from astrbot.core.provider.entites import LLMResponse
 import re
+
+from sqlalchemy import false
+
 '''---------------------------------------------------'''
 @register("astrbot_plugin_moreVITS", "达莉娅",
           "硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（填写api就可用）",
@@ -20,6 +23,7 @@ import re
 class MyPlugin(Star):
     def __init__(self, context: Context, config: dict):
         super().__init__(context)
+        self.fg = False
         self.rooms = []
         self.output = Queue()
         self.trash = Queue()
@@ -38,6 +42,8 @@ class MyPlugin(Star):
         self.music_url = config.get('参考音频url', '')
         self.music_text_file = config.get('参考音频文本txt模式', '')
         self.api_key = config.get('apikey', '')
+        self.fg = config.get('是否同时回复文字内容开关', False)
+        self.trap = config.get('过滤开关', True)
         if not self.ran:
             self.ran = 0.5
         if os.path.exists(self.music_text_file):
@@ -108,7 +114,25 @@ class MyPlugin(Star):
         '''上传参考音频文本'''
         self.music_text = music_text
         yield event.plain_result(f"参考音频文本上传完成")
-
+    @filter.command("文本开关")
+    async def trap(self, event: AstrMessageEvent):
+        '''这是一个开启语音原文一起发指令'''
+        user_id = event.get_sender_id()
+        chain1 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n过滤已经启动"),
+            Face(id=337),
+        ]
+        chain2 = [
+            At(qq=user_id),  # At 消息发送者
+            Plain(f"\n过滤已经关闭"),
+            Face(id=337),
+        ]
+        self.fg = not self.fg
+        if self.trap:
+            yield event.chain_result(chain1)
+        else:
+            yield event.chain_result(chain2)
     @filter.command("过滤开关")
     async def trap(self, event: AstrMessageEvent):
         '''这是一个过滤颜表情开关指令'''
@@ -183,6 +207,9 @@ class MyPlugin(Star):
         if  random_float>=self.ran:
             logger.info("随机取消转语音")
             return
+        elif self.fg:
+            text = self.remove_complex_emoticons(text)
+            await event.send(result)
         logger.info(f"LLM返回的文本是：{text}")
         result.chain.remove(Plain(text))
         if self.trap:
@@ -224,8 +251,6 @@ class MyPlugin(Star):
 
     def remove_complex_emoticons(self,text):
         pattern = r"""
-                [a-zA-Z]                # 匹配所有英文字母
-                |                       # 或
                 \([^()]+\)              # 匹配括号内的复杂颜表情
                 |                       # 或
                 [^\u4e00-\u9fff，。？！、]  # 匹配非中文、非标点符号、非空格的字符

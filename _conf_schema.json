@@ -4,6 +4,16 @@
         "type": "float",
         "hint": ""
     },
+    "过滤开关": {
+        "description": "过滤开关",
+        "type": "bool",
+        "hint": "过滤开关"
+    },
+    "是否同时回复文字内容开关": {
+        "description": "是否同时回复文字内容开关",
+        "type": "bool",
+        "hint": "是否同时回复文字内容开关"
+    },
     "apikey": {
         "description": "请输入API的密钥（必须输入）",
         "type": "string",
