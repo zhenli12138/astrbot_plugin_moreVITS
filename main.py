@@ -243,7 +243,7 @@ class MyPlugin(Star):
                 model=self.api_name,  # 发送模型名称
                 voice="",  # 此处传入空值，表示使用动态音色
                 input=text,
-                response_format="mp3",
+                response_format="wav",
                 extra_body={"references": [
                     {
                         "audio": f"{self.music_url}",
@@ -265,7 +265,7 @@ class MyPlugin(Star):
                 model=self.api_name,  # 发送模型名称
                 voice="",  # 此处传入空值，表示使用动态音色
                 input=text,
-                response_format="mp3",
+                response_format="wav",
                 extra_body={"references": [
                     {
                         "audio": f"data:audio/mpeg;base64,{self.base64_audio}",
@@ -289,7 +289,7 @@ class MyPlugin(Star):
         if self.counter == 20:
             self.counter = 0
         self.counter = self.counter + 1
-        output_audio_path = f"./data/plugins/astrbot_plugin_morevits/voice{self.counter}.mp3"
+        output_audio_path = f"./data/plugins/astrbot_plugin_morevits/voice{self.counter}.wav"
         self.output.put(output_audio_path)
         return output_audio_path
     '''---------------------------------------------------'''
