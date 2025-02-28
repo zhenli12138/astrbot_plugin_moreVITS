@@ -111,16 +111,16 @@ class MyPlugin(Star):
         user_id = event.get_sender_id()
         chain1 = [
             At(qq=user_id),  # At 消息发送者
-            Plain(f"\n过滤已经启动"),
+            Plain(f"\n文本已经启动"),
             Face(id=337),
         ]
         chain2 = [
             At(qq=user_id),  # At 消息发送者
-            Plain(f"\n过滤已经关闭"),
+            Plain(f"\n文本已经关闭"),
             Face(id=337),
         ]
         self.fg = not self.fg
-        if self.trap:
+        if self.fg:
             yield event.chain_result(chain1)
         else:
             yield event.chain_result(chain2)
