@@ -181,6 +181,8 @@ class MyPlugin(Star):
         result = event.get_result()
         text = result.get_plain_text()
         room = event.get_group_id()
+        res = MessageChain()
+        res.chain = result.chain
         adapter_name = event.get_platform_name()
         if adapter_name == "qq_official":
             logger.info("检测为官方机器人，自动忽略转语音请求")
@@ -199,8 +201,7 @@ class MyPlugin(Star):
             logger.info("随机取消转语音")
             return
         elif self.fg:
-            text = self.remove_complex_emoticons(text)
-            await event.send(result)
+            await event.send(res)
         logger.info(f"LLM返回的文本是：{text}")
         result.chain.remove(Plain(text))
         if self.trap:
