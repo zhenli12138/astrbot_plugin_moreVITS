@@ -106,7 +106,7 @@ class MyPlugin(Star):
         self.music_text = music_text
         yield event.plain_result(f"参考音频文本上传完成")
     @filter.command("文本开关")
-    async def trap(self, event: AstrMessageEvent):
+    async def trapsss(self, event: AstrMessageEvent):
         '''这是一个开启语音原文一起发指令'''
         user_id = event.get_sender_id()
         chain1 = [
