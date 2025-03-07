@@ -1,7 +1,6 @@
-name: astrbot_plugin_moreVITS
-desc: 更新分群开关【/morevits】/更新概率触发，配置里设置]硅基流动利用用户的参考音频进行文本转语音的功能，内置了一个测试用的三月七（只填api就可用）。
+name: astrbot_plugin_comp_entertainment
+desc:  达莉娅群娱插件，50+超多功能集成调用插件，持续更新中，发【菜单】看菜单
 help:
-version: v1.3.0
+version: v1.9.8
 author: 达莉娅
-repo: https://github.com/zhenli12138/astrbot_plugin_morevits
-
+repo: https://github.com/zhenli12138/astrbot_plugin_comp_entertainment
